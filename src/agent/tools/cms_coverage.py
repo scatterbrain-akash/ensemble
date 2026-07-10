@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import random
 from typing import Any
 
 import httpx
@@ -52,14 +53,49 @@ class CMSCoverageTool(BaseTool):
             headers["Authorization"] = f"Bearer {self._get_license_token()}"
 
         param_name = param_name_map.get(policy_type, "code")
-        response = self._client.get(url, params={param_name: code}, headers=headers)
-        if response.status_code == 401 and policy_type != "ncd":
-            self._reset_license_token()
-            headers["Authorization"] = f"Bearer {self._get_license_token()}"
-            response = self._client.get(url, params={param_name: code}, headers=headers)
+        # Retry/backoff configuration
+        max_attempts = int(self.settings.retries.get("cms_tool", 3))
+        backoff_base = float(self.settings.cms.get("retry_backoff_seconds", 0.5))
+        max_backoff = float(self.settings.cms.get("max_backoff_seconds", 10.0))
 
-        response.raise_for_status()
-        return response.json()
+        last_exc: Exception | None = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                response = self._client.get(url, params={param_name: code}, headers=headers)
+
+                # Handle unauthorized: try refresh once
+                if response.status_code == 401 and policy_type != "ncd":
+                    self._reset_license_token()
+                    headers["Authorization"] = f"Bearer {self._get_license_token()}"
+                    response = self._client.get(url, params={param_name: code}, headers=headers)
+
+                # Raise for 4xx/5xx to be handled accordingly
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as exc:
+                status = getattr(exc.response, "status_code", None)
+                last_exc = exc
+                # Retry on 5xx server errors or transient network issues
+                if status is not None and 500 <= status < 600 and attempt < max_attempts:
+                    backoff = min(max_backoff, backoff_base * (2 ** (attempt - 1)))
+                    jitter = backoff * (0.5 * random.random())
+                    time.sleep(backoff + jitter)
+                    continue
+                # For other HTTP errors, do not retry
+                raise
+            except httpx.RequestError as exc:
+                last_exc = exc
+                if attempt < max_attempts:
+                    backoff = min(max_backoff, backoff_base * (2 ** (attempt - 1)))
+                    jitter = backoff * (0.5 * random.random())
+                    time.sleep(backoff + jitter)
+                    continue
+                raise
+
+        # Exhausted retries
+        if last_exc:
+            raise last_exc
+        return {}
 
     def _reset_license_token(self) -> None:
         self._license_token = None
@@ -109,8 +145,22 @@ class CMSCoverageTool(BaseTool):
         return token
 
     def _parse_policy_response(self, response: Any, query: dict[str, Any], policy_type: str) -> list[dict[str, Any]]:
+        candidates = []
         if isinstance(response, dict):
-            candidates = response.get("data") or response.get("results") or [response]
+            # Prefer a populated `data` array
+            data_arr = response.get("data")
+            if isinstance(data_arr, list) and len(data_arr) > 0:
+                candidates = data_arr
+            else:
+                results_arr = response.get("results")
+                if isinstance(results_arr, list) and len(results_arr) > 0:
+                    candidates = results_arr
+                else:
+                    # If the top-level response looks like a single document, use it
+                    if any(k in response for k in ("document_id", "lcd_id", "article_id", "id")):
+                        candidates = [response]
+                    else:
+                        candidates = []
         elif isinstance(response, list):
             candidates = response
         else:

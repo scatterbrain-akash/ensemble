@@ -24,7 +24,8 @@ class MockProvider(LLMProvider):
             return self._mock_synthesis(user_prompt)
         if "critique agent" in lower_prompt:
             return self._mock_critique(user_prompt)
-        return json.dumps({"message": "mock response"})
+        # Return content and synthetic usage for consistency with real providers
+        return {"content": json.dumps({"message": "mock response"}), "usage": {"prompt_tokens": 5, "completion_tokens": 5}}
 
     def healthcheck(self) -> bool:
         return True

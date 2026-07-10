@@ -10,6 +10,13 @@ A lightweight agentic pipeline for transforming a denial letter/EOB into an evid
 - Applies bounded self-critique and guardrails
 - Escalates safely when evidence or confidence is insufficient
 
+## CMS Integration
+
+- The project wraps the CMS Coverage API (`https://api.coverage.cms.gov`) in a single tool: `src/agent/tools/cms_coverage.py`.
+- Endpoints used: `/v1/data/ncd/`, `/v1/data/lcd/`, `/v1/data/article/` (mapped to `ncdid`, `lcdid`, `articleid` query params).
+- LCD/Article calls require a license-agreement token obtained from `/v1/metadata/license-agreement`. The token is valid for ~1 hour and must be provided as `Authorization: Bearer <token>`.
+- The tool implements configurable retry/backoff with jitter for transient errors. Configure via `config/settings.yaml` under `retries.cms_tool` (attempts) and `cms.retry_backoff_seconds` / `cms.max_backoff_seconds`.
+
 ## Repo structure
 
 - `src/agent/`: application code
@@ -29,10 +36,44 @@ A lightweight agentic pipeline for transforming a denial letter/EOB into an evid
    ```
 2. Create `.env` from `.env.example` and set your API keys.
 
+### Configuration
+
+- Copy `config/settings.example.yaml` to `config/settings.yaml` and adjust values for your environment (Redis URL, per-token costs, TTLs, API keys).
+
+CI / Badge
+
+- A GitHub Actions workflow `CI` is provided at `.github/workflows/ci.yml` that runs tests and includes a Redis service for integration tests.
+- Add a workflow badge to this README by replacing `OWNER` and `REPO` with your repository owner/name:
+
+   ![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)
+
+   Example: `![CI](https://github.com/youruser/ensemble/actions/workflows/ci.yml/badge.svg)`
+
+### Configuration
+
+- `config/settings.yaml` can be used to tune timeouts, retry/backoff, and CMS-specific settings. Example keys:
+   - `timeouts.tool_call_seconds`
+   - `retries.cms_tool`
+   - `cms.retry_backoff_seconds`
+   - `cms.max_backoff_seconds`
+   - `cms.license_token_ttl_seconds`
+
 ## Run
 
 ```bash
 python -m src.agent.cli --input "path/to/denial.txt"
+```
+
+## Developer Quick Commands
+
+Run tests:
+```bash
+python -m pytest -q
+```
+
+Run the scenario evaluator:
+```bash
+python -c "from pathlib import Path; from src.agent.config import Settings; from src.agent.evaluation.evaluator import Evaluator; print(Evaluator(Settings(env='personal')).run_scenarios(Path('tests/fixtures/scenarios.json')))"
 ```
 
 ## Evaluation

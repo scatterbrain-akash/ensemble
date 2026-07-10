@@ -14,6 +14,7 @@ from src.agent.tools.registry import load_tool
 from src.agent.observability.cost_tracker import CostTracker
 from src.agent.observability.tracer import Tracer
 from src.agent.observability.logger import get_logger
+from src.agent.cache.cache_service import CacheService
 
 
 class Orchestrator:
@@ -22,11 +23,20 @@ class Orchestrator:
         self.logger = get_logger(__name__)
         self.tracer = Tracer()
         self.cost_tracker = CostTracker()
+        self.cache = CacheService(settings=settings)
         self.model_router = ModelRouter(settings=settings)
-        self.extraction = ExtractionAgent(settings=settings, model_router=self.model_router)
-        self.planner = PlannerAgent(settings=settings, model_router=self.model_router)
-        self.synthesis = SynthesisAgent(settings=settings, model_router=self.model_router)
-        self.critique = CritiqueAgent(settings=settings, model_router=self.model_router)
+        self.extraction = ExtractionAgent(
+            settings=settings, model_router=self.model_router, cache_service=self.cache, cost_tracker=self.cost_tracker
+        )
+        self.planner = PlannerAgent(
+            settings=settings, model_router=self.model_router, cache_service=self.cache, cost_tracker=self.cost_tracker
+        )
+        self.synthesis = SynthesisAgent(
+            settings=settings, model_router=self.model_router, cache_service=self.cache, cost_tracker=self.cost_tracker
+        )
+        self.critique = CritiqueAgent(
+            settings=settings, model_router=self.model_router, cache_service=self.cache, cost_tracker=self.cost_tracker
+        )
         self.cms_tool = load_tool("cms_coverage", settings=settings)
         self.fixture_tool = load_tool("fixture_retrieval")
 
@@ -86,12 +96,26 @@ class Orchestrator:
     def _retrieve_policy_evidence(self, state: AgentState) -> AgentState:
         state.policy_evidence = []
         for query in state.retrieval_plan.queries:
-            evidence_data = self.cms_tool.run(query)
-            self.cost_tracker.record_tool_call()
-            if not evidence_data:
-                self.logger.info("cms_tool returned no evidence, falling back to fixture retrieval")
-                evidence_data = self.fixture_tool.run(query)
+            # Tool-result cache key
+            cache_key = f"tool:cms:{query.get('policy_type')}:{query.get('code')}"
+            evidence_data = self.cache.get(cache_key) if self.cache else None
+            if evidence_data is None:
+                evidence_data = self.cms_tool.run(query)
                 self.cost_tracker.record_tool_call()
+                if not evidence_data:
+                    self.logger.info("cms_tool returned no evidence, falling back to fixture retrieval")
+                    evidence_data = self.fixture_tool.run(query)
+                    self.cost_tracker.record_tool_call()
+                # store successful findings in cache
+                try:
+                    ttl = int(self.settings.cache.get("policy_ttl_seconds", 3600))
+                    if evidence_data:
+                        self.cache.set(cache_key, evidence_data, ttl)
+                except Exception:
+                    pass
+            else:
+                # cache hit
+                pass
             for item in evidence_data:
                 state.policy_evidence.append(PolicyEvidence(**item))
         return state
