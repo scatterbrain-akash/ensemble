@@ -1,0 +1,15 @@
+timeouts:
+  llm_call_seconds: 25
+  tool_call_seconds: 20
+retries:
+  llm_retries: 1
+  tool_retries: 2
+cost:
+  max_run_usd: 0.50
+cache:
+  policy_ttl_seconds: 3600
+  llm_ttl_seconds: 600
+cms:
+  license_token_ttl_seconds: 3600
+  api_retry_delay_seconds: 1.0
+  api_backoff_factor: 2.0

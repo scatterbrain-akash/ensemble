@@ -1,0 +1,75 @@
+Spec-driven development (SDD)
+
+- specs are most durable source of truth and
+- code is a generated, disposable artifact compiled from it
+
+- Constitution | What principles/constraints always hold? | `constitution` / project rules | once |
+- Specify | What & why (requirements, user stories — no implementation) | `spec.md` / `requirements.md` | review |
+- Plan | How (architecture, data model, interfaces) | `plan.md` / `design.md` | review |
+- Tasks | In what order (dependency-sequenced, testable) | `tasks.md` | review |
+- Implement | Agent executes task-by-task, traceable to requirements | code + tests | review |
+- Verify/Converge | Does code match spec? What's missing? | gap report |
+
+
+| **GitHub Spec Kit** | Open, model-agnostic CLI (`specify`) that drops markdown templates + slash commands into your repo; drives ~30 agents (Cursor, Copilot, Claude Code…) | Portability, no lock-in, greenfield |
+| **AWS Kiro** | VS Code fork where spec/design/tasks are first-class UI; requirements auto-written in **EARS** notation; Bedrock agents implement | Guided, enterprise, AWS |
+| **Cursor Plan Mode + AGENTS.md** | Plan-first design then agent execution | IDE-first teams (you) |
+| **Claude Code skills / OpenSpec / BMAD / Tessl** | Lightweight terminal / audit-trail flavors | Tessl = regulated industries |
+
+**Advanced variant — VSDD (Verified SDD)** = SDD + TDD + VDD fused: agent commits to a **behavioral contract**, writes **failing tests first (a "Red gate")**, implements, then faces **adversarial review from a fresh zero-context agent**. Each phase is a *gate*, not a suggestion. Use it where correctness is non-negotiable (auth, financial logic, crypto).
+
+**Honest pitfalls:** "a sea of markdown," "reinvented waterfall," over-ceremony for small tasks, and spec rot if you don't maintain it. SDD shines on greenfield + well-understood domains; it's weaker on messy legacy and tight iteration.
+
+> **Tie-in:** your `SOLUTION_DESIGN_v2.md` + `CODEBASE_STRUCTURE_v2.md` *are* a spec+plan. Building the Ensemble app section-by-section against them, with the checklist as your task/verify gate, is textbook SDD — and it's exactly what you already do at Fractal (Pioneer). That's a strong interview narrative.
+
+---
+
+# 2) Advanced Cursor / VSCode usage (it really isn't just prompting)
+
+**The mental-model shift:** the skill moved from *prompting* → **context engineering + orchestration + verification**. You're now a *director* who designs the environment so agents produce correct work reliably. Prompting is maybe 10% of it. Here's the stack people actually use, in layers:
+
+### Layer 1 — Context engineering (the #1 skill now)
+| Primitive | Lives in | Use when |
+|---|---|---|
+| **`AGENTS.md`** | repo root (+ nested per-dir) | Always-on project context: stack, conventions, commands. **Start here.** Cross-tool (Cursor, Codex, Copilot, Gemini, Aider). |
+| **Rules** (`.cursor/rules/*.mdc`) | `.cursor/rules/` | *Scoped* guidance: `Always` / `Auto-attached` by glob / `Agent-requested` by description / `Manual`. |
+| **User/Team rules** | dashboard | Personal or org-wide standards. |
+
+**Anti-pattern (now deprecated):** one giant always-on `.cursorrules` / `.mdc` — it burns context. Modern approach = lean `AGENTS.md` + scoped rules + on-demand knowledge.
+
+### Layer 2 — Dynamic knowledge (loaded only when relevant → keeps context lean)
+- **Skills** (`SKILL.md`) — model-invoked playbooks with **progressive disclosure** (loaded when the agent judges them relevant). You already have a bunch (Foundry, canvas, etc.).
+- **MCP servers** (`mcp.json`) — connect the agent to **real systems**: Postgres, GitHub, Sentry, Datadog, Linear, Slack, Stripe, a browser. This is the biggest 2026 unlock — the IDE agent becomes an ops/data agent that reads a stack trace and ships a fix in one move.
+- **Custom commands** (`/review`, `/test`, `/pr`) — reusable `/`-triggered workflows.
+
+### Layer 3 — Modes
+**Plan** (read-only design before edits) · **Agent** (default) · **Ask** (read-only Q&A) · **Debug**. Plan-first is how you avoid the agent charging off in the wrong direction.
+
+### Layer 4 — Automation & hooks (deterministic, non-negotiable enforcement)
+`.cursor/hooks.json` runs scripts on lifecycle events:
+- `afterFileEdit` → auto-format/lint every edit
+- `beforeShellExecution` → **block destructive commands**, redact secrets, audit
+- `stop` → the **"grind loop"**: keep the agent iterating until tests pass
+
+Hooks are how you make quality *guaranteed* rather than *hoped for*.
+
+### Layer 5 — Multi-agent & parallelism
+- **Subagents** (`.cursor/agents/`, nesting in 2.5+) — specialized personas (reviewer, verifier, explorer) that run in parallel/background.
+- **Background / Cloud agents** — assign a task, walk away; Cursor spins a sandboxed VM/worktree and hands you a **PR**. Multiple in parallel.
+- **Coordinator → specialist → verifier** pattern + **git worktrees** (one agent, one branch, merge sequentially).
+- The real skill here is **decomposition**: independent tasks touching *different files*, with *explicit interfaces* defined in the spec. Poor decomposition = merge conflicts and wasted tokens.
+
+### Layer 6 — Programmatic / headless
+- **Cursor CLI + SDK** (`@cursor/sdk` TS, `cursor-sdk` Python) — run agents in CI/CD, GitHub Actions, backend services. Agents-as-infrastructure.
+- **Bugbot** (auto PR review) and **security-review** subagents as automated gates.
+
+### Cross-cutting — verification-driven development
+Treat tests/acceptance criteria as the contract; the agent **writes tests, runs them, and self-verifies** — running the app, screenshotting, iterating. (I did exactly this a moment ago: rendered your HTML in headless Chrome to confirm all 16 diagrams draw before handing it over.) Add **LLM-as-judge / adversarial review from a fresh context** when correctness matters.
+
+### The VSCode / Copilot side (same ideas, different labels)
+`.github/copilot-instructions.md` (≈ AGENTS.md) · **prompt files** (`*.prompt.md`) · **custom chat modes** · **agent mode** · native **MCP** · **Copilot coding agent** (assign an issue → it opens a PR) · **Copilot CLI**. VS Code is also the base fork under Cursor, Kiro, and Windsurf.
+
+---
+
+## The one-line synthesis
+> **Advanced usage = engineering the agent's *environment*, not its *prompt*.** Specs define intent, rules+`AGENTS.md` enforce conventions, skills+MCP supply on-demand knowledge and real tools, hooks guarantee quality, subagents/worktrees parallelize, and tests/verification close the loop. Prompting is the smallest piece.

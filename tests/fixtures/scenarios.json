@@ -1,0 +1,10 @@
+[
+  {
+    "name": "basic denial with fixture evidence",
+    "input_path": "tests/fixtures/denial_letters/basic_denial.txt",
+    "should_escalate": false,
+    "expected_claim_id": "12345",
+    "expected_procedure_codes": ["11100"],
+    "expected_policy_source_ids": ["fixture-11100"]
+  }
+]

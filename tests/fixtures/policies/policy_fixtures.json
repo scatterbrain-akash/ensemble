@@ -1,0 +1,17 @@
+{
+  "11100": [
+    {
+      "source_id": "fixture-11100",
+      "source_type": "fixture",
+      "title": "Mock CMS policy fallback for procedure 11100",
+      "excerpt": "Procedure 11100 is covered under a standard CMS policy when billed appropriately.",
+      "relevance": "direct",
+      "retrieval_query": {
+        "code": "11100",
+        "code_type": "procedure",
+        "policy_type": "ncd"
+      },
+      "url": "https://cms.gov/mock/ncd/11100"
+    }
+  ]
+}

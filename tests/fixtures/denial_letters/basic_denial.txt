@@ -1,0 +1,7 @@
+Claim ID: 12345
+Payer: Medicare
+Procedure: 11100
+Diagnosis: M54.5
+Denial reason: medical necessity
+Service date: 2026-06-01
+The claim was denied because the service was considered not medically necessary.
