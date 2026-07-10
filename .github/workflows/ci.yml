@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, feature/* ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install redis
+        - name: Redis smoke test
+        run: |
+          python - <<'PY'
+          import os, sys
+          try:
+            import redis
+          except Exception:
+            print('redis package not installed')
+            sys.exit(1)
+          url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+          r = redis.from_url(url)
+          try:
+            r.ping()
+            print('Redis reachable')
+          except Exception as e:
+            print('Redis not reachable:', e)
+            sys.exit(2)
+          PY
+      - name: Run tests
+        run: |
+          pytest -q

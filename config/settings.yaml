@@ -6,7 +6,13 @@ retries:
   tool_retries: 2
 cost:
   max_run_usd: 0.50
+  per_token_usd: 0.000002
+  groq_per_token_usd: 0.0000025
+  aistudio_per_token_usd: 0.0000025
 cache:
+  backend: redis
+  redis_url: redis://localhost:6379/0
+  file_path: cache/cache_store.json
   policy_ttl_seconds: 3600
   llm_ttl_seconds: 600
 cms:

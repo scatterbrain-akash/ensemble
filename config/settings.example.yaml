@@ -1,0 +1,33 @@
+# Example settings for local development and CI
+
+timeouts:
+  llm_call_seconds: 25
+  tool_call_seconds: 20
+retries:
+  llm_retries: 1
+  tool_retries: 2
+cost:
+  # Generic per-token cost (USD) used as fallback
+  per_token_usd: 0.000002
+  # Provider-specific per-token rates (optional; override with real pricing)
+  groq_per_token_usd: 0.0000025
+  aistudio_per_token_usd: 0.0000025
+  max_run_usd: 0.50
+cache:
+  # Backend: 'redis' or 'file' or 'memory'
+  backend: redis
+  # Redis URL used when backend == redis
+  redis_url: redis://localhost:6379/0
+  # Optional file-backed cache when Redis not available
+  file_path: cache/cache_store.json
+  # TTLs (seconds)
+  policy_ttl_seconds: 3600
+  llm_ttl_seconds: 600
+cms:
+  license_token_ttl_seconds: 3600
+  api_retry_delay_seconds: 1.0
+  api_backoff_factor: 2.0
+
+# Notes:
+# - Copy this file to config/settings.yaml and adjust secrets/API keys and pricing.
+# - In CI, Redis is started as a service and the tests will connect to redis://localhost:6379/0

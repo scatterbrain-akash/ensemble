@@ -38,6 +38,19 @@ A lightweight agentic pipeline for transforming a denial letter/EOB into an evid
 
 ### Configuration
 
+- Copy `config/settings.example.yaml` to `config/settings.yaml` and adjust values for your environment (Redis URL, per-token costs, TTLs, API keys).
+
+CI / Badge
+
+- A GitHub Actions workflow `CI` is provided at `.github/workflows/ci.yml` that runs tests and includes a Redis service for integration tests.
+- Add a workflow badge to this README by replacing `OWNER` and `REPO` with your repository owner/name:
+
+   ![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)
+
+   Example: `![CI](https://github.com/youruser/ensemble/actions/workflows/ci.yml/badge.svg)`
+
+### Configuration
+
 - `config/settings.yaml` can be used to tune timeouts, retry/backoff, and CMS-specific settings. Example keys:
    - `timeouts.tool_call_seconds`
    - `retries.cms_tool`
