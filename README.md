@@ -1,4 +1,4 @@
-# Claims Denial & Appeal Intelligence Agent
+# Claims Denial & Appeal Agent - [Category: Document Processing]
 
 A custom agentic pipeline that transforms an insurance denial letter or EOB document into an evidence-grounded appeal preparation package — with real LLM calls, CMS policy retrieval, self-critique, guardrails, and a web UI.
 
