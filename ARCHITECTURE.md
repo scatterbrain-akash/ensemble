@@ -172,23 +172,27 @@ Example output: {"summary": "...", "appeal_arguments": [...], "evidence_referenc
 
 ## 5. Sample Agent Run Trace
 
-Full artifact at `traces/sample_run.json`. Summary of a complete run on `basic_denial.txt`:
+Full artifact at `traces/sample_run.json`. This is a complete run on `basic_denial.txt`.
 
-**Input:** `Claim ID: 12345 | Payer: Medicare | Procedure: 11100 | Diagnosis: M54.5 | Denial reason: medical necessity`
+**Input document:**
+```
+Claim ID: 12345
+Payer: Medicare
+Procedure: 11100
+Diagnosis: M54.5
+Denial reason: medical necessity
+Service date: 2026-06-01
+The claim was denied because the service was considered not medically necessary.
+```
 
-**Execution trace:**
+---
 
-| Stage | Duration | LLM Calls | Tokens In | Tokens Out | Status |
-|---|---|---|---|---|---|
-| extraction | 0.34s | 1 | ~406 | ~129 | completed |
-| planning | 0.43s | 1 | ~332 | ~105 | completed — 2 queries |
-| retrieval | 1.39s | 0 | 0 | 0 | completed — 1 evidence item |
-| synthesis | 0.81s | 1 | ~403 | ~182 | completed |
-| critique | 0.30s | 1 | ~582 | ~99 | completed |
+**Step 1 — Extraction Agent** *(reason: parse the document)*
 
-**Total wall time:** ~3.3s | **Total LLM calls:** 4 | **Overall status:** completed
+LLM call → `llama-3.1-8b-instant` | 401 tokens in, 84 tokens out | 0.25s
 
-**Extracted claim:**
+Decision: extracted all key fields, confidence 1.0 → continue to planning.
+
 ```json
 {
   "claim_id": "12345",
@@ -196,14 +200,108 @@ Full artifact at `traces/sample_run.json`. Summary of a complete run on `basic_d
   "procedure_codes": ["11100"],
   "diagnosis_codes": ["M54.5"],
   "denial_reason": "medical necessity",
+  "service_dates": ["2026-06-01"],
   "confidence": 1.0
 }
 ```
 
-**Appeal draft (summary excerpt):**
-> "Claim 12345 was denied for medical necessity. NCD evidence supports coverage for procedure 11100 when diagnosis M54.5 is documented. The denial appears contestable based on the retrieved policy."
+---
 
-**Critique result:** `passed: true` — all arguments traceable to evidence.
+**Step 2 — Planner Agent** *(plan: decide what to retrieve)*
+
+LLM call → `llama-3.3-70b-versatile` | 430 tokens in, 89 tokens out | 0.28s
+
+Decision: generated 2 queries, escalate_before_draft = false → continue to retrieval.
+
+```json
+{
+  "queries": [
+    { "code": "11100", "code_type": "procedure", "policy_type": "ncd",
+      "rationale": "Check NCD coverage for skin biopsy procedure." },
+    { "code": "M54.5",  "code_type": "diagnosis",  "policy_type": "lcd",
+      "rationale": "Check LCD for low back pain as covered indication." }
+  ],
+  "escalate_before_draft": false
+}
+```
+
+---
+
+**Step 3 — Retrieval Stage** *(act: tool calls to CMS API)*
+
+No LLM call — pure tool execution | 1.17s
+
+Tool call 1: `CMSCoverageTool.run({code: "11100", policy_type: "ncd"})` → CMS returned empty → fallback to fixture.
+Tool call 2: `CMSCoverageTool.run({code: "M54.5",  policy_type: "lcd"})` → CMS returned empty → no fixture match.
+
+Result: 1 evidence item retrieved.
+
+```json
+{
+  "source_id": "fixture-11100",
+  "source_type": "fixture",
+  "title": "Mock CMS policy fallback for procedure 11100",
+  "excerpt": "Procedure 11100 is covered under a standard CMS policy when billed appropriately.",
+  "relevance": "direct"
+}
+```
+
+---
+
+**Step 4 — Synthesis Agent** *(act: write the appeal draft)*
+
+LLM call → `gemini-2.5-flash` | 536 tokens in, 149 tokens out | 0.75s
+
+Decision: produced a draft with 1 argument citing fixture-11100 → continue to critique.
+
+```json
+{
+  "summary": "Claim 12345 was denied for medical necessity for procedure 11100. fixture-11100 supports coverage for this procedure when billed appropriately, and the claim includes a diagnosed condition of M54.5 which may support medical necessity.",
+  "appeal_arguments": [
+    "Per fixture-11100, procedure 11100 is covered under standard CMS policy, suggesting that the denial for medical necessity may be contestable, especially given the documented diagnosis of M54.5."
+  ],
+  "evidence_references": ["fixture-11100"],
+  "limitations": [
+    "The policy excerpt does not explicitly address all aspects of medical necessity for diagnosis M54.5; a full policy review is recommended."
+  ]
+}
+```
+
+---
+
+**Step 5 — Critique Agent** *(observe: validate the draft)*
+
+LLM call → `gemini-2.5-flash-lite` | 656 tokens in, 100 tokens out | 0.47s
+
+Decision: passed. All arguments traceable to evidence. Two evidence gaps noted but not blocking.
+
+```json
+{
+  "passed": true,
+  "unsupported_claims": [],
+  "missing_evidence": [
+    "Full NCD text for procedure 11100",
+    "Clinical documentation supporting the medical necessity of 11100 for M54.5"
+  ],
+  "revision_instructions": [
+    "Provide a detailed explanation of how M54.5 supports medical necessity of 11100"
+  ],
+  "escalation_required": false
+}
+```
+
+---
+
+**Overall execution summary:**
+
+| Stage | Duration | LLM Calls | Tokens In | Tokens Out | Status |
+|---|---|---|---|---|---------|
+| extraction | 0.25s | 1 | 401 | 84 | completed |
+| planning | 0.28s | 1 | 430 | 89 | completed |
+| retrieval | 1.17s | 0 | 0 | 0 | completed |
+| synthesis | 0.75s | 1 | 536 | 149 | completed |
+| critique | 0.47s | 1 | 656 | 100 | completed |
+| **total** | **2.92s** | **4** | **2023** | **422** | **completed** |
 
 ---
 
