@@ -25,3 +25,8 @@ cache/cache_store.json
 *.swp
 *.swo
 .DS_Store
+
+# Local run helpers and internal docs — not part of the submission
+quickRUN.md
+quickRUN.sh
+docs/
