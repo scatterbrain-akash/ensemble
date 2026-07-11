@@ -30,3 +30,7 @@ cache/cache_store.json
 quickRUN.md
 quickRUN.sh
 docs/
+
+# CLI output files
+output_*.json
+result.json
