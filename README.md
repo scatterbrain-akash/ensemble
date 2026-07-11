@@ -64,6 +64,23 @@ CI / Badge
 python -m src.agent.cli --input "path/to/denial.txt"
 ```
 
+## Observability
+
+The agent emits structured runtime information in two places:
+
+- `metadata.trace` on the final response contains per-stage spans with `name`, `start_time`, `end_time`, `duration`, and optional metadata.
+- `metadata.execution_summary` includes per-step `llm_calls`, `cache_hits`, `tokens_in`, `tokens_out`, `cost_usd`, and result statuses.
+
+A sample execution artifact is available at `traces/sample_run.json`.
+
+To view it:
+
+```bash
+python -m json.tool traces/sample_run.json | less
+```
+
+or open it in a JSON viewer to inspect the trace spans and summary.
+
 ## Developer Quick Commands
 
 Run tests:

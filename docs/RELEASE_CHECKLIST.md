@@ -30,7 +30,13 @@ This checklist maps release requirements to concrete repository artifacts to dem
   - Code flow and entrypoints: [docs/CODE_FLOW.md](docs/CODE_FLOW.md)
   - README references example config: [README.md](README.md)
 
-- [ ] Contributor docs & governance (deferred)
-  - Add `CONTRIBUTING.md`, `CODE_OF_CONDUCT`, LICENSE, PR/Issue templates. These are left as a small, deliberate next step.
+- [x] Contributor docs & governance
+  - Add `CONTRIBUTING.md`, `CODE_OF_CONDUCT`, LICENSE. These files are now present.
 
-Status: Release-ready for v1.0.0. Remaining deferred items are governance and contributor-facing docs.
+- [x] Sample run artifact
+  - Add `traces/sample_run.json` as an inspectable runtime trace artifact.
+
+- [x] Observability guidance
+  - Document trace and execution summary viewing in `README.md`.
+
+Status: Release-ready for v1.0.0. Remaining deferred items are CI polish and optional contributor templates.
