@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claims Denial Appeal Intelligence</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: 0.3px; }
+    header .badge {
+      font-size: 0.7rem;
+      background: #3d6eb4;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+    }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 18px; color: #1a1a2e; }
+
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #e8ecf2; }
+    .tab-btn {
+      padding: 8px 20px;
+      font-size: 0.875rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: #666;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      font-weight: 500;
+    }
+    .tab-btn.active { color: #3d6eb4; border-bottom-color: #3d6eb4; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    textarea {
+      width: 100%;
+      height: 160px;
+      padding: 12px;
+      border: 1px solid #d0d7e3;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+    }
+    textarea:focus { border-color: #3d6eb4; box-shadow: 0 0 0 3px rgba(61,110,180,0.12); }
+
+    .file-drop {
+      border: 2px dashed #c5cdd8;
+      border-radius: 8px;
+      padding: 36px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .file-drop:hover, .file-drop.drag-over { border-color: #3d6eb4; background: #f0f5ff; }
+    .file-drop input { display: none; }
+    .file-drop p { font-size: 0.875rem; color: #666; margin-top: 6px; }
+    .file-name { font-size: 0.85rem; color: #3d6eb4; margin-top: 8px; font-weight: 500; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 24px;
+      background: #3d6eb4;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 16px;
+    }
+    .btn:hover { background: #2f5a9a; }
+    .btn:disabled { background: #9ab0cc; cursor: not-allowed; }
+    .btn .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    .btn.loading .spinner { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #error-box {
+      display: none;
+      background: #fff0f0;
+      border: 1px solid #f5c6c6;
+      color: #c0392b;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.875rem;
+      margin-top: 16px;
+    }
+
+    /* Result section */
+    #results { display: none; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 20px;
+    }
+    .status-bar.completed { background: #e8f5e9; color: #2e7d32; }
+    .status-bar.escalated { background: #fff3e0; color: #e65100; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .completed .status-dot { background: #2e7d32; }
+    .escalated .status-dot { background: #e65100; }
+
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 10px;
+    }
+
+    .summary-text {
+      font-size: 0.9rem;
+      line-height: 1.65;
+      color: #333;
+      background: #f8f9fb;
+      border-left: 3px solid #3d6eb4;
+      padding: 12px 16px;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .arg-list, .ref-list, .limit-list { list-style: none; margin-top: 4px; }
+    .arg-list li {
+      padding: 10px 14px;
+      background: #f4f7ff;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      line-height: 1.55;
+      margin-bottom: 8px;
+      border-left: 3px solid #3d6eb4;
+    }
+    .ref-list li {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #e8f0fe;
+      color: #3d6eb4;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin: 4px 4px 4px 0;
+    }
+    .limit-list li {
+      padding: 8px 14px;
+      background: #fff8e1;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #856404;
+      margin-bottom: 6px;
+    }
+
+    /* Trace / execution table */
+    .trace-grid {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .trace-grid th {
+      background: #f4f6f9;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #555;
+      border-bottom: 1px solid #e0e5ee;
+    }
+    .trace-grid td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f0f2f5;
+      color: #333;
+    }
+    .trace-grid tr:last-child td { border-bottom: none; }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .pill.completed { background: #e8f5e9; color: #2e7d32; }
+    .pill.escalated { background: #fff3e0; color: #e65100; }
+    .pill.skipped   { background: #f5f5f5; color: #999; }
+    .pill.failed    { background: #fdecea; color: #c0392b; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Claims Denial Appeal Intelligence</h1>
+  <span class="badge">Agent v1.0</span>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Submit Denial Letter / EOB</h2>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="text">Paste Text</button>
+      <button class="tab-btn" data-tab="file">Upload PDF</button>
+    </div>
+
+    <div id="tab-text" class="tab-panel active">
+      <textarea id="denial-text" placeholder="Paste the full text of the denial letter or EOB here…"></textarea>
+    </div>
+
+    <div id="tab-file" class="tab-panel">
+      <div class="file-drop" id="file-drop">
+        <input type="file" id="file-input" accept=".pdf,.txt" />
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>
+        <p>Drag and drop a PDF or text file, or click to browse</p>
+        <div class="file-name" id="file-name"></div>
+      </div>
+    </div>
+
+    <div id="error-box"></div>
+
+    <button class="btn" id="run-btn">
+      <div class="spinner"></div>
+      Analyze Denial
+    </button>
+  </div>
+
+  <div id="results">
+    <!-- Status bar -->
+    <div class="status-bar" id="status-bar">
+      <div class="status-dot"></div>
+      <span id="status-text"></span>
+    </div>
+
+    <!-- Appeal Summary -->
+    <div class="card" id="card-appeal">
+      <h2>Appeal Package</h2>
+      <div class="section-label">Summary</div>
+      <div class="summary-text" id="appeal-summary"></div>
+
+      <div style="margin-top:20px">
+        <div class="section-label">Appeal Arguments</div>
+        <ul class="arg-list" id="appeal-args"></ul>
+      </div>
+
+      <div style="margin-top:16px">
+        <div class="section-label">Evidence References</div>
+        <ul class="ref-list" id="appeal-refs"></ul>
+      </div>
+
+      <div style="margin-top:16px" id="limitations-block">
+        <div class="section-label">Limitations</div>
+        <ul class="limit-list" id="appeal-limits"></ul>
+      </div>
+    </div>
+
+    <!-- Execution trace -->
+    <div class="card">
+      <h2>Execution Trace</h2>
+      <table class="trace-grid">
+        <thead>
+          <tr>
+            <th>Stage</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>LLM Calls</th>
+            <th>Tokens In</th>
+            <th>Tokens Out</th>
+          </tr>
+        </thead>
+        <tbody id="trace-body"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // File drop
+  const fileDrop = document.getElementById('file-drop');
+  const fileInput = document.getElementById('file-input');
+  const fileName  = document.getElementById('file-name');
+  let selectedFile = null;
+
+  fileDrop.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) { selectedFile = fileInput.files[0]; fileName.textContent = selectedFile.name; }
+  });
+  fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('drag-over'); });
+  fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('drag-over'));
+  fileDrop.addEventListener('drop', e => {
+    e.preventDefault(); fileDrop.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) { selectedFile = e.dataTransfer.files[0]; fileName.textContent = selectedFile.name; fileInput.files = e.dataTransfer.files; }
+  });
+
+  // Run
+  const runBtn   = document.getElementById('run-btn');
+  const errorBox = document.getElementById('error-box');
+  const results  = document.getElementById('results');
+
+  runBtn.addEventListener('click', async () => {
+    errorBox.style.display = 'none';
+    results.style.display  = 'none';
+
+    const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+    const formData  = new FormData();
+
+    if (activeTab === 'text') {
+      const t = document.getElementById('denial-text').value.trim();
+      if (!t) { showError('Please paste the denial letter text.'); return; }
+      formData.append('text', t);
+    } else {
+      if (!selectedFile) { showError('Please select a PDF or text file.'); return; }
+      formData.append('file', selectedFile);
+    }
+
+    runBtn.classList.add('loading');
+    runBtn.disabled = true;
+
+    try {
+      const resp = await fetch('/analyze', { method: 'POST', body: formData });
+      const data = await resp.json();
+      if (!resp.ok) { showError(data.detail || 'Server error.'); return; }
+      renderResults(data);
+    } catch (e) {
+      showError('Network error: ' + e.message);
+    } finally {
+      runBtn.classList.remove('loading');
+      runBtn.disabled = false;
+    }
+  });
+
+  function showError(msg) { errorBox.textContent = msg; errorBox.style.display = 'block'; }
+
+  function renderResults(data) {
+    const summary  = data.metadata?.execution_summary || {};
+    const status   = summary.overall_status || 'unknown';
+    const statusBar = document.getElementById('status-bar');
+    statusBar.className = 'status-bar ' + (status === 'completed' ? 'completed' : 'escalated');
+    document.getElementById('status-text').textContent =
+      status === 'completed'
+        ? `Pipeline completed — ${summary.total_llm_calls || 0} LLM calls, ${(summary.total_tokens_in || 0) + (summary.total_tokens_out || 0)} total tokens`
+        : `Escalated — ${data.escalation_reason || 'requires human review'}`;
+
+    const draft = data.appeal_draft;
+    const cardAppeal = document.getElementById('card-appeal');
+    if (draft) {
+      cardAppeal.style.display = 'block';
+      document.getElementById('appeal-summary').textContent = draft.summary || '—';
+
+      const argsList = document.getElementById('appeal-args');
+      argsList.innerHTML = '';
+      (draft.appeal_arguments || []).forEach(a => {
+        const li = document.createElement('li'); li.textContent = a; argsList.appendChild(li);
+      });
+
+      const refsList = document.getElementById('appeal-refs');
+      refsList.innerHTML = '';
+      (draft.evidence_references || []).forEach(r => {
+        const li = document.createElement('li'); li.textContent = r; refsList.appendChild(li);
+      });
+
+      const limits = draft.limitations || [];
+      document.getElementById('limitations-block').style.display = limits.length ? 'block' : 'none';
+      const limitsList = document.getElementById('appeal-limits');
+      limitsList.innerHTML = '';
+      limits.forEach(l => { const li = document.createElement('li'); li.textContent = l; limitsList.appendChild(li); });
+    } else {
+      cardAppeal.style.display = 'none';
+    }
+
+    // Trace table
+    const tbody = document.getElementById('trace-body');
+    tbody.innerHTML = '';
+    (summary.steps || []).forEach(step => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${step.step}</td>
+        <td><span class="pill ${step.status}">${step.status}</span></td>
+        <td>${step.duration != null ? step.duration.toFixed(3) + 's' : '—'}</td>
+        <td>${step.llm_calls ?? 0}</td>
+        <td>${step.tokens_in ?? 0}</td>
+        <td>${step.tokens_out ?? 0}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    results.style.display = 'block';
+    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+</script>
+</body>
+</html>

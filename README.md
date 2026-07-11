@@ -1,6 +1,175 @@
 # Claims Denial & Appeal Intelligence Agent
 
-A lightweight agentic pipeline for transforming a denial letter/EOB into an evidence-grounded appeal preparation package.
+A custom agentic pipeline that transforms an insurance denial letter or EOB document into an evidence-grounded appeal preparation package — with real LLM calls, CMS policy retrieval, self-critique, guardrails, and a web UI.
+
+---
+
+## Domain & Design Rationale
+
+**Domain:** Document Processing — extracting structured data from unstructured medical denial letters and generating evidence-backed appeal arguments.
+
+This domain was chosen because:
+- Denial letters are semi-structured but highly variable — ideal for LLM extraction
+- CMS coverage policies (NCD/LCD) are authoritative, machine-readable APIs — ideal for grounded retrieval
+- Appeals require accurate citation — ideal for testing hallucination guardrails and self-critique
+
+The architecture is a **custom multi-stage agent pipeline** (no external framework dependency), where each stage is a distinct LLM-driven role with its own system prompt, schema, and guardrails.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A([Denial Letter / EOB\nTXT or PDF]) --> B[Input Guardrail\ninput_guard.py]
+    B --> C[Extraction Agent\nGroq llama-3.1-8b-instant]
+    C -->|ExtractedClaim| D{Confidence ≥ 0.5?}
+    D -- No --> Z1([Escalate])
+    D -- Yes --> E[Planner Agent\nGroq llama-3.3-70b-versatile]
+    E -->|RetrievalPlan| F{Escalate before draft?}
+    F -- Yes --> Z2([Escalate])
+    F -- No --> G[Retrieval Stage\nOrchestrator]
+    G --> G1[CMS Coverage Tool\nNCD / LCD API]
+    G1 -->|empty| G2[Fixture Fallback Tool]
+    G1 -->|evidence| H
+    G2 --> H[Synthesis Agent\nGemini 2.5 Flash]
+    H -->|AppealDraft| I[Output Guardrail\noutput_guard.py]
+    I -- fail --> Z3([Escalate])
+    I -- pass --> J[Critique Agent\nGemini 2.5 Flash Lite]
+    J -->|CritiqueResult| K{Passed?}
+    K -- No --> Z4([Escalate])
+    K -- Yes --> L([Final Appeal Package\n+ Trace + Cost Summary])
+```
+
+---
+
+## Repo Structure
+
+```
+src/agent/
+├── agents/          # extraction, planner, synthesis, critique + base
+├── api/             # FastAPI app + static HTML frontend
+├── cache/           # TTL cache service (in-memory, file-backed, or Redis)
+├── core/            # orchestrator, model router, agent state
+├── evaluation/      # scenario evaluator
+├── guardrails/      # input and output validation
+├── llm/             # Groq, AI Studio, Mock providers
+├── observability/   # tracer and cost tracker
+├── prompts/         # versioned system prompt files (*.md)
+├── schemas/         # Pydantic I/O models
+├── tools/           # CMS coverage tool, fixture fallback, registry
+└── utils/           # PDF text extractor
+config/              # models.yaml (provider/model per role), settings.example.yaml
+tests/
+├── fixtures/        # denial letters (txt + pdf), policy fixtures, scenarios.json
+├── unit/            # unit tests
+└── integration/     # CMS integration tests
+traces/              # sample run artifact (sample_run.json)
+```
+
+---
+
+## Setup
+
+```bash
+# 1. Clone and enter the repo
+git clone https://github.com/scatterbrain-akash/ensemble.git
+cd ensemble
+
+# 2. One-command setup (creates .venv, installs deps, copies config)
+./run.sh setup
+
+# 3. Activate the environment
+source .venv/bin/activate
+
+# 4. Add your API keys to .env
+#    GROQ_API_KEY=...
+#    AI_STUDIO_API_KEY=...
+#    (the pipeline runs with MockProvider if no keys are set)
+```
+
+Config files:
+
+| File | Purpose |
+|---|---|
+| `.env` | API keys (copied from `.env.example`) |
+| `config/settings.yaml` | Timeouts, retries, cache TTLs, cost rates |
+| `config/models.yaml` | Which LLM model to use per agent role |
+
+---
+
+## Running
+
+```bash
+# Process a text denial letter
+./run.sh run-txt
+
+# Process the sample PDF denial letter
+./run.sh run-pdf
+
+# Process any file (text or PDF)
+./run.sh run-custom /path/to/your_eob.pdf
+
+# Or use the CLI directly
+python -m src.agent.cli --input tests/fixtures/denial_letters/basic_denial.txt
+python -m src.agent.cli --input tests/fixtures/denial_letters/sample_eob_denial.pdf --output result.json
+```
+
+---
+
+## Web UI
+
+```bash
+./run.sh run-web
+# Open http://localhost:8000
+```
+
+The UI accepts text paste or PDF drag-and-drop, runs the full pipeline, and shows the appeal package plus a per-stage execution trace table.
+
+---
+
+## Docker
+
+```bash
+./run.sh docker-up    # build + start (docker-compose)
+./run.sh docker-down  # stop
+./run.sh docker-run   # one-shot without compose
+```
+
+---
+
+## Tests & Evaluation
+
+```bash
+./run.sh test       # full pytest suite
+./run.sh evaluate   # scenario evaluator against tests/fixtures/scenarios.json
+```
+
+Sample run artifact: `traces/sample_run.json`
+
+```bash
+python -m json.tool traces/sample_run.json | less
+```
+
+---
+
+## Agent Design Highlights
+
+| Concern | Implementation |
+|---|---|
+| Multi-stage agents | Custom pipeline: extraction → planning → retrieval → synthesis → critique |
+| Prompt engineering | Versioned system prompts with explicit JSON schemas and one-shot examples |
+| Structured output | Pydantic models for every stage |
+| Self-critique | Dedicated `CritiqueAgent` validates draft against evidence |
+| RAG | CMS Coverage API (NCD/LCD) provides grounded policy evidence |
+| Guardrails | Input domain check + output hallucination/placeholder detection |
+| Observability | Per-stage tracer spans + cost tracker in `metadata` |
+| Provider fallback | `ModelRouter` tries primary then fallback providers on HTTP errors |
+| PDF support | `pypdf` text extraction for text-layer EOB PDFs |
+| Escalation | Explicit early-exit at each stage with `escalation_reason` |
+
+See `ARCHITECTURE.md` for the full design write-up, sample trace, and evaluation results.
+
 
 ## What it does
 
