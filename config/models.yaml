@@ -10,11 +10,11 @@ roles:
     fallbacks: []
   synthesis:
     tier: strong
-    primary: groq:gpt-oss-120b
+    primary: aistudio:gemini-2.5-flash
     fallbacks:
-      - aistudio:gemini-2.5-flash
+      - groq:llama-3.3-70b-versatile
   critique:
     tier: reason
     primary: aistudio:gemini-2.5-flash-lite
     fallbacks:
-      - groq:deepseek-r1-distill
+      - groq:llama-3.3-70b-versatile

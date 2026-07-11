@@ -23,7 +23,7 @@ class ExtractionAgent(BaseAgent):
             denial_reason=str(parsed.get("denial_reason")) if parsed.get("denial_reason") is not None else None,
             service_dates=[str(date) for date in parsed.get("service_dates", [])],
             missing_fields=[str(field) for field in parsed.get("missing_fields", [])],
-            confidence=float(parsed.get("confidence", 0.0)),
+            confidence=float(parsed.get("confidence") or 0.0),
         )
         state.extracted_claim = extracted_claim
         return state

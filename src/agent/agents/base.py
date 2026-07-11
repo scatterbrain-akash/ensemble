@@ -58,8 +58,20 @@ class BaseAgent(ABC):
                     self.cost_tracker.record_cache_hit()
                 return cached
 
-        # Call provider
-        provider_result = provider.generate(system_prompt=system_prompt, user_prompt=user_prompt, **kwargs)
+        # Call provider — try primary, then fallbacks on HTTP errors
+        provider_result = None
+        last_exc: Exception | None = None
+        providers_to_try = [provider] + self.model_router.get_fallback_providers(self.role)
+        for attempt_provider in providers_to_try:
+            try:
+                provider_result = attempt_provider.generate(system_prompt=system_prompt, user_prompt=user_prompt, **kwargs)
+                provider = attempt_provider  # keep reference for cost calculation
+                break
+            except Exception as exc:
+                last_exc = exc
+                continue
+        if provider_result is None:
+            raise RuntimeError(f"All providers failed for role '{self.role}'") from last_exc
 
         # provider_result may be either a string or a dict {content, usage}
         response_text = None
