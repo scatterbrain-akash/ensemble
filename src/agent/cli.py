@@ -4,6 +4,7 @@ from typing import Any
 
 from src.agent.config import Settings
 from src.agent.core.orchestrator import Orchestrator
+from src.agent.utils.pdf_reader import extract_text_from_pdf
 
 
 def _format_summary(summary: dict[str, Any]) -> str:
@@ -70,7 +71,10 @@ def main() -> None:
     if not input_path.exists() or not input_path.is_file():
         raise FileNotFoundError(f"Input file not found: {input_path}")
 
-    text = input_path.read_text(encoding="utf-8")
+    if input_path.suffix.lower() == ".pdf":
+        text = extract_text_from_pdf(input_path)
+    else:
+        text = input_path.read_text(encoding="utf-8")
     result = orchestrator.run(text)
     summary = result.metadata.get("execution_summary", {})
 
