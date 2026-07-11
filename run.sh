@@ -42,6 +42,13 @@ setup() {
   info "Installing web dependencies (FastAPI / uvicorn)…"
   pip install -r requirements-web.txt -q
 
+  # Check Redis connectivity (optional — app falls back to file cache if unavailable)
+  if python3 -c "import redis; redis.from_url('redis://localhost:6379/0').ping()" 2>/dev/null; then
+    success "Redis is reachable at localhost:6379 — cache.backend=redis will be used."
+  else
+    warn "Redis not reachable. The app will use file-backed cache (cache/cache_store.json)."
+    warn "To enable Redis: run 'redis-server' in another terminal, then set cache.backend: redis in config/settings.yaml"
+  fi
   if [ ! -f .env ]; then
     info "Copying .env.example → .env"
     cp .env.example .env
