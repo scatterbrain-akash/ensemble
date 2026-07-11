@@ -33,3 +33,20 @@ It converts a denial letter/EOB into structured claim facts, retrieves CMS cover
 
 The implementation is designed to be deterministic without network access by using fixture fallback.
 A future enhancement is to add live integration tests and a full run report artifact using `traces/sample_run.json`.
+
+## Sample run artifact
+
+A captured run artifact has been created at `traces/sample_run.json`.
+It includes:
+
+- `input_text`
+- `extracted_claim`
+- `retrieval_plan`
+- `policy_evidence`
+- `appeal_draft`
+- `critique_result`
+- `escalation_reason`
+- `metadata.trace`
+- `metadata.execution_summary`
+
+This artifact is intended as the required inspectable execution trace for the candidate assessment.

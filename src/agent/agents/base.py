@@ -54,6 +54,8 @@ class BaseAgent(ABC):
             cache_key = hashlib.sha256(key_raw.encode("utf-8")).hexdigest()
             cached = self.cache_service.get(f"llm:{cache_key}")
             if cached is not None:
+                if self.cost_tracker:
+                    self.cost_tracker.record_cache_hit()
                 return cached
 
         # Call provider

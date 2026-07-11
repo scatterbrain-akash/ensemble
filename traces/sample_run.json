@@ -1,0 +1,112 @@
+{
+  "input_text": "Claim ID: 12345\nPayer: Medicare\nProcedure: 11100\nDiagnosis: M54.5\nDenial reason: medical necessity\nService date: 2026-06-01\nThe claim was denied because the service was considered not medically necessary.\n",
+  "extracted_claim": {
+    "claim_id": "12345",
+    "payer": "Medicare",
+    "procedure_codes": [
+      "11100"
+    ],
+    "diagnosis_codes": [
+      "M54.5"
+    ],
+    "denial_reason": "medical necessity",
+    "service_dates": [
+      "2026-06-01"
+    ],
+    "missing_fields": [],
+    "confidence": 1.0
+  },
+  "retrieval_plan": {
+    "queries": [],
+    "escalate_before_draft": true
+  },
+  "policy_evidence": [],
+  "appeal_draft": null,
+  "critique_result": null,
+  "escalation_reason": "Planning determined escalation",
+  "metadata": {
+    "trace": [
+      {
+        "name": "extraction",
+        "start_time": 1783773428.0191622,
+        "end_time": 1783773428.2640069,
+        "duration": 0.24484467506408691,
+        "metadata": {}
+      },
+      {
+        "name": "planning",
+        "start_time": 1783773428.264016,
+        "end_time": 1783773429.765416,
+        "duration": 1.5013999938964844,
+        "metadata": {}
+      }
+    ],
+    "execution_summary": {
+      "overall_status": "escalated",
+      "escalation_reason": "Planning determined escalation",
+      "steps": [
+        {
+          "step": "extraction",
+          "llm_calls": 1,
+          "cache_hits": 0,
+          "tokens_in": 188,
+          "tokens_out": 79,
+          "cost_usd": 0.0006675,
+          "status": "completed",
+          "duration": 0.24484467506408691,
+          "result": "claim data extracted"
+        },
+        {
+          "step": "planning",
+          "llm_calls": 1,
+          "cache_hits": 0,
+          "tokens_in": 170,
+          "tokens_out": 299,
+          "cost_usd": 0.0011725,
+          "status": "escalated",
+          "duration": 1.5013999938964844,
+          "result": "escalation required before retrieval"
+        },
+        {
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "llm_calls": 0,
+          "cache_hits": 0,
+          "step": "retrieval",
+          "status": "skipped",
+          "duration": 0.0,
+          "result": "not executed"
+        },
+        {
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "llm_calls": 0,
+          "cache_hits": 0,
+          "step": "synthesis",
+          "status": "skipped",
+          "duration": 0.0,
+          "result": "not generated"
+        },
+        {
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "llm_calls": 0,
+          "cache_hits": 0,
+          "step": "critique",
+          "status": "skipped",
+          "duration": 0.0,
+          "result": "critique failed or escalation required"
+        }
+      ],
+      "input_length": 205,
+      "total_llm_calls": 2,
+      "total_cache_hits": 0,
+      "total_tokens_in": 358,
+      "total_tokens_out": 378,
+      "total_cost_usd": 0.00184
+    }
+  }
+}

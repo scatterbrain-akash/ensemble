@@ -1,0 +1,27 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest cache
+.pytest_cache/
+
+# Environment files
+.env
+.env.*
+
+# Local settings and generated cache
+config/settings.yaml
+cache/cache_store.json
+
+# Editor and OS files
+.vscode/
+*.swp
+*.swo
+.DS_Store

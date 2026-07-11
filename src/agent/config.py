@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +26,8 @@ class Settings(BaseModel):
     _config_data: dict[str, Any] = PrivateAttr(default_factory=dict)
 
     def __init__(self, **data: Any):
-        load_dotenv()
+        if os.environ.get("DISABLE_DOTENV") != "1":
+            load_dotenv()
         env_override = data.pop("env", None) or "personal"
         super().__init__(env=env_override, **data)
         self._load_yaml()
