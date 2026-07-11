@@ -19,26 +19,136 @@ The architecture is a **custom multi-stage agent pipeline** (no external framewo
 
 ## Architecture
 
+### 1. System Architecture
+
+How the components are structured and connected.
+
 ```mermaid
-flowchart TD
-    A([Denial Letter / EOB\nTXT or PDF]) --> B[Input Guardrail\ninput_guard.py]
-    B --> C[Extraction Agent\nGroq llama-3.1-8b-instant]
-    C -->|ExtractedClaim| D{Confidence ≥ 0.5?}
-    D -- No --> Z1([Escalate])
-    D -- Yes --> E[Planner Agent\nGroq llama-3.3-70b-versatile]
-    E -->|RetrievalPlan| F{Escalate before draft?}
-    F -- Yes --> Z2([Escalate])
-    F -- No --> G[Retrieval Stage\nOrchestrator]
-    G --> G1[CMS Coverage Tool\nNCD / LCD API]
-    G1 -->|empty| G2[Fixture Fallback Tool]
-    G1 -->|evidence| H
-    G2 --> H[Synthesis Agent\nGemini 2.5 Flash]
-    H -->|AppealDraft| I[Output Guardrail\noutput_guard.py]
-    I -- fail --> Z3([Escalate])
-    I -- pass --> J[Critique Agent\nGemini 2.5 Flash Lite]
-    J -->|CritiqueResult| K{Passed?}
-    K -- No --> Z4([Escalate])
-    K -- Yes --> L([Final Appeal Package\n+ Trace + Cost Summary])
+graph TB
+    subgraph Input
+        TXT[Text File .txt]
+        PDF[PDF File .pdf]
+    end
+
+    subgraph API Layer
+        CLI[CLI  src/agent/cli.py]
+        WEB[Web UI  src/agent/api/app.py]
+    end
+
+    subgraph Core
+        ORCH[Orchestrator]
+        ROUTER[Model Router]
+        STATE[Agent State]
+    end
+
+    subgraph Agents
+        EXT[Extraction Agent]
+        PLAN[Planner Agent]
+        SYN[Synthesis Agent]
+        CRIT[Critique Agent]
+    end
+
+    subgraph LLM Providers
+        GROQ[Groq API]
+        GEMINI[AI Studio / Gemini]
+        MOCK[Mock Provider]
+    end
+
+    subgraph Tools
+        CMS[CMS Coverage Tool\nNCD / LCD API]
+        FIX[Fixture Fallback Tool]
+    end
+
+    subgraph Infrastructure
+        CACHE[Cache Service\nRedis / File / Memory]
+        TRACER[Tracer]
+        COST[Cost Tracker]
+    end
+
+    TXT --> CLI
+    PDF --> CLI
+    TXT --> WEB
+    PDF --> WEB
+    CLI --> ORCH
+    WEB --> ORCH
+
+    ORCH --> EXT
+    ORCH --> PLAN
+    ORCH --> SYN
+    ORCH --> CRIT
+    ORCH --> STATE
+
+    EXT --> ROUTER
+    PLAN --> ROUTER
+    SYN --> ROUTER
+    CRIT --> ROUTER
+
+    ROUTER --> GROQ
+    ROUTER --> GEMINI
+    ROUTER --> MOCK
+
+    ORCH --> CMS
+    CMS -->|no result| FIX
+
+    EXT & PLAN & SYN & CRIT --> CACHE
+    ORCH --> TRACER
+    ORCH --> COST
+```
+
+---
+
+### 2. Execution Flow
+
+The pipeline stages in order, with escalation exit points.
+
+```mermaid
+flowchart LR
+    A([Input\nTXT or PDF]) --> B[Input\nGuardrail]
+    B --> C[Extraction\nAgent]
+    C --> D{confidence\n≥ 0.5?}
+    D -- No --> X1([Escalate])
+    D -- Yes --> E[Planner\nAgent]
+    E --> F{codes\nfound?}
+    F -- No --> X2([Escalate])
+    F -- Yes --> G[Retrieval\nCMS / Fixture]
+    G --> H[Synthesis\nAgent]
+    H --> I[Output\nGuardrail]
+    I -- fail --> X3([Escalate])
+    I -- pass --> J[Critique\nAgent]
+    J --> K{passed?}
+    K -- No --> X4([Escalate])
+    K -- Yes --> L([Appeal Package\n+ Trace])
+```
+
+---
+
+### 3. Agent State Machine
+
+The agent loop — how state transitions across each stage.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+
+    Idle --> Extracting : input received
+
+    Extracting --> Planning : confidence ≥ 0.5
+    Extracting --> Escalated : confidence < 0.5
+
+    Planning --> Retrieving : queries generated
+    Planning --> Escalated : no codes / escalate flag
+
+    Retrieving --> Synthesising : evidence collected
+    Retrieving --> Synthesising : fallback used
+
+    Synthesising --> Critiquing : draft produced
+    Synthesising --> Escalated : guardrail failed
+
+    Critiquing --> Done : critique passed
+    Critiquing --> Escalated : critique failed
+
+    Done --> [*]
+    Escalated --> [*]
 ```
 
 ---
