@@ -24,4 +24,5 @@ Security & privacy
 - No secrets checked in. Tokens from CMS license-agreement are short-lived and stored only in memory with TTL.
 
 Known limitations (deferred items)
-- CONTRIBUTING, PR/Issue templates, pre-commit hooks, formal CODE_OF_CONDUCT and LICENSE files are intentionally left as a focused next step and can be added before public distribution.
+- PR and issue templates are not yet added.
+- Pre-commit hooks are not yet configured.

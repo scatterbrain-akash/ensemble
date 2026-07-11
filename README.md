@@ -93,6 +93,11 @@ Run the scenario evaluator:
 python -c "from pathlib import Path; from src.agent.config import Settings; from src.agent.evaluation.evaluator import Evaluator; print(Evaluator(Settings(env='personal')).run_scenarios(Path('tests/fixtures/scenarios.json')))"
 ```
 
+If tests fail with import errors, install the package in editable mode:
+```bash
+pip install -e .
+```
+
 ## Evaluation
 
 A simple scenario evaluator is available using `tests/fixtures/scenarios.json`.
