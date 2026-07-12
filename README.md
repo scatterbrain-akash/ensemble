@@ -1,6 +1,8 @@
+https://github.com/user-attachments/assets/21447eba-e3d7-48d1-b1e0-936c6c64f0ce
+
 # Claims Denial & Appeal Agent - [Category: Document Processing]
 
-A custom agentic pipeline that transforms an insurance denial letter or EOB document into an evidence-grounded appeal preparation package — with real LLM calls, CMS policy retrieval, self-critique, guardrails, and a web UI.
+A custom agentic pipeline that transforms an insurance denial letter or EOB document into an evidence-grounded appeal preparation package with a simple web UI.
 
 ---
 
@@ -8,10 +10,9 @@ A custom agentic pipeline that transforms an insurance denial letter or EOB docu
 
 **Domain:** Document Processing — extracting structured data from unstructured medical denial letters and generating evidence-backed appeal arguments.
 
-This domain was chosen because:
-- Denial letters are semi-structured but highly variable — ideal for LLM extraction
-- CMS coverage policies (NCD/LCD) are authoritative, machine-readable APIs — ideal for grounded retrieval
-- Appeals require accurate citation — ideal for testing hallucination guardrails and self-critique
+- Denial letters are semi-structured but highly variable
+- CMS coverage policies (NCD/LCD) are authoritative, machine-readable APIs
+- Appeals require accurate citation
 
 The architecture is a **custom multi-stage agent pipeline** (no external framework dependency), where each stage is a distinct LLM-driven role with its own system prompt, schema, and guardrails.
 
@@ -318,17 +319,6 @@ See `ARCHITECTURE.md` for the full design write-up, sample trace, and evaluation
 ### Configuration
 
 - Copy `config/settings.example.yaml` to `config/settings.yaml` and adjust values for your environment (Redis URL, per-token costs, TTLs, API keys).
-
-CI / Badge
-
-- A GitHub Actions workflow `CI` is provided at `.github/workflows/ci.yml` that runs tests and includes a Redis service for integration tests.
-- Add a workflow badge to this README by replacing `OWNER` and `REPO` with your repository owner/name:
-
-   ![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)
-
-   Example: `![CI](https://github.com/youruser/ensemble/actions/workflows/ci.yml/badge.svg)`
-
-### Configuration
 
 - `config/settings.yaml` can be used to tune timeouts, retry/backoff, and CMS-specific settings. Example keys:
    - `timeouts.tool_call_seconds`
